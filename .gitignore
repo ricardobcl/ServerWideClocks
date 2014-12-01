@@ -1,4 +1,4 @@
-ebin
+*.beam
 *.swp
 *.dump
 edoc-info
