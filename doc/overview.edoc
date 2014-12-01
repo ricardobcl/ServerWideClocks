@@ -1,0 +1,18 @@
+
+@author Ricardo Gonçalves <tome.wave@gmail.com>
+@copyright 2014 Ricardo Gonçalves.
+@version 1.0
+@title GLC - Global Logical Clocks
+
+
+@doc
+
+
+To  run the test suite:
+
+```
+make test
+'''
+
+@end
+
