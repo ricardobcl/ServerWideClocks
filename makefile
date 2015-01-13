@@ -4,7 +4,7 @@ ERLC ?= $(shell which erlc)
 ESCRIPT ?= $(shell which escript)
 ERL ?= $(shell which erl)
 APP := enkidb
-REBAR?= rebar
+REBAR?= $(shell pwd)/rebar
 
 $(if $(ERLC),,$(warning "Warning: No Erlang found in your path, this will probably not work"))
 

@@ -58,7 +58,10 @@ norm({N,B}) ->
 norm_bvv(BVV) ->
     % normalize all entries
     FunMap = fun (_Id, E) -> norm(E) end,
-    orddict:map(FunMap, BVV).
+    BVV1 = orddict:map(FunMap, BVV),
+    % remove `{0,0}` entries
+    FunFilter = fun (_Id, E) -> E =/= {0,0} end,
+    orddict:filter(FunFilter, BVV1).
 
 %% @doc Returns the sequence numbers for the dots represented by an entry.
 -spec values(entry()) -> [counter()].
@@ -154,6 +157,7 @@ store_entry(Id, Entry, BVV) ->
 norm_test() ->
     ?assertEqual( norm({5,3}), {7,0} ),
     ?assertEqual( norm({5,2}), {5,2} ),
+    ?assertEqual( norm_bvv( [{"a",{0,0}}] ), [] ),
     ?assertEqual( norm_bvv( [{"a",{5,3}}] ), [{"a",{7,0}}] ).
 
 values_test() ->
