@@ -81,6 +81,8 @@ values_aux(N,B,L) ->
 
 %% @doc Adds a dot (ID, Counter) to a BVV.
 -spec add(bvv(), {id(), counter()}) -> bvv().
+add(BVV, {_Id, 0}) ->
+    norm_bvv(BVV);
 add(BVV, {Id, Counter}) ->
     Initial = add_aux({0,0}, Counter),
     Fun = fun (Entry) -> add_aux(Entry, Counter) end,
@@ -118,12 +120,11 @@ join_aux({N1,B1}, {N2,B2}) ->
 %% @doc Takes and returns a BVV where in each entry, the bitmap is reset to zero.
 -spec base(bvv()) -> bvv().
 base(BVV) ->
-    % I'm not sure we want to normalize too soon for fault-tolerance reasons
-% % normalize all entries
-% BVV1 = norm_bvv(BVV),
+    % normalize all entries
+    BVV1 = norm_bvv(BVV),
     % remove all non-contiguous counters w.r.t the base
     Fun = fun (_Id, {N,_B}) -> {N,0} end,
-    orddict:map(Fun, BVV).
+    orddict:map(Fun, BVV1).
 
 %% @doc Takes a BVV at node Id and returns a pair with sequence number for a new
 %% event (dot) at node Id and the original BVV with the new dot added; this
@@ -143,6 +144,8 @@ event(BVV, Id) ->
 
 %% @doc Stores an Id-Entry pair in a BVV; if the id already exists, the 
 %% associated entry is replaced by the new one.
+store_entry(_Id, {0,0}, BVV) ->
+    BVV;
 store_entry(Id, Entry, BVV) ->
     orddict:store(Id, Entry, BVV).
 
@@ -165,6 +168,8 @@ values_test() ->
     ?assertEqual( lists:sort( values({2,5}) ), lists:sort( [1,2,3,5] )).
 
 add_test() ->
+    ?assertEqual( add( [{"a",{5,3}}] , {"b",0} ), [{"a",{7,0}}] ),
+    ?assertEqual( add( [{"a",{5,3}}] , {"a",1} ), [{"a",{7,0}}] ),
     ?assertEqual( add( [{"a",{5,3}}] , {"a",8} ), [{"a",{8,0}}] ),
     ?assertEqual( add( [{"a",{5,3}}] , {"b",8} ), [{"a",{5,3}}, {"b",{0,128}}] ).
 
@@ -194,10 +199,10 @@ join_aux_test() ->
     ?assertEqual( join_aux({3,2}, {1,16}), {3,6} ).
 
 base_test() ->
-    ?assertEqual( base( [{"a",{5,3}}] ), [{"a",{5,0}}] ),
+    ?assertEqual( base( [{"a",{5,3}}] ), [{"a",{7,0}}] ),
     ?assertEqual( base( [{"a",{5,2}}] ), [{"a",{5,0}}] ),
     ?assertEqual( base( [{"a",{5,3}}, {"b",{2,4}}, {"c",{1,2}}, {"d",{5,2}}] ), 
-                        [{"a",{5,0}}, {"b",{2,0}}, {"c",{1,0}}, {"d",{5,0}}] ).
+                        [{"a",{7,0}}, {"b",{2,0}}, {"c",{1,0}}, {"d",{5,0}}] ).
 
 
 event_test() ->
