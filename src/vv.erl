@@ -20,6 +20,7 @@
         , filter/2
         , add/2
         , min/1
+        , min_key/1
         ]).
 
 -export_type([vv/0]).
@@ -62,9 +63,46 @@ add(VV, {Id, Counter}) ->
     Fun = fun (C) -> max(C, Counter) end,
     orddict:update(Id, Fun, Counter, VV).
 
-%% @doc Returns the mininum counters from all the entries in the VV.
+%% @doc Returns the minimum counters from all the entries in the VV.
 -spec min(vv()) -> counter().
 min(VV) ->
     Keys = orddict:fetch_keys(VV),
     Values = [orddict:fetch(Key, VV) || Key <- Keys],
     lists:min(Values).
+
+%% @doc Returns the key with the minimum counter associated.
+-spec min_key(vv()) -> id().
+min_key(VV) ->
+    Fun = fun (Key, Value, {MKey, MVal}) ->
+            case Value < MVal of
+                true  -> {Key, Value};
+                false -> {MKey, MVal}
+            end
+        end,
+    [Head | Tail] = VV,
+    {MinKey, _MinValue} = orddict:fold(Fun, Head, Tail),
+    MinKey.
+
+
+
+%% ===================================================================
+%% EUnit tests
+%% ===================================================================
+
+-ifdef(TEST).
+
+min_key_test() ->
+    A0 = [{"a",2}],
+    A1 = [{"a",2}, {"b",4}, {"c",4}],
+    A2 = [{"a",5}, {"b",4}, {"c",4}],
+    A3 = [{"a",4}, {"b",4}, {"c",4}],
+    A4 = [{"a",5}, {"b",14}, {"c",4}],
+    ?assertEqual( "a", min_key(A0)),
+    ?assertEqual( "a", min_key(A1)),
+    ?assertEqual( "b", min_key(A2)),
+    ?assertEqual( "a", min_key(A3)),
+    ?assertEqual( "c", min_key(A4)),
+    ok.
+
+
+-endif.
