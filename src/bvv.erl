@@ -144,10 +144,13 @@ event(BVV, Id) ->
 
 %% @doc Stores an Id-Entry pair in a BVV; if the id already exists, the 
 %% associated entry is replaced by the new one.
-store_entry(_Id, {0,0}, BVV) ->
-    BVV;
-store_entry(Id, Entry, BVV) ->
-    orddict:store(Id, Entry, BVV).
+store_entry(_Id, {0,0}, BVV) -> BVV;
+store_entry(Id, Entry={N,0}, BVV) ->
+    case orddict:find(Id, BVV) of
+        {ok, {N2,_}} when N2 >= N   -> BVV;
+        {ok, {N2,_}} when N2 <  N   -> orddict:store(Id, Entry, BVV);
+        error                       -> orddict:store(Id, Entry, BVV)
+    end.
 
 
 
@@ -210,5 +213,12 @@ event_test() ->
     ?assertEqual( event( [{"a",{5,3}}] , "b"), {1, [{"a",{5,3}}, {"b",{1,0}}]} ),
     ?assertEqual( event( [{"a",{5,3}}, {"b",{2,0}}, {"c",{1,2}}, {"d",{5,3}}] , "b"), 
                         {3, [{"a",{5,3}}, {"b",{3,0}}, {"c",{1,2}}, {"d",{5,3}}]} ).
+
+
+store_entry_test() ->
+    ?assertEqual( store_entry( "a", {0,0}, [{"a",{7,0}}]), [{"a",{7,0}}] ),
+    ?assertEqual( store_entry( "b", {0,0}, [{"a",{7,0}}]), [{"a",{7,0}}] ),
+    ?assertEqual( store_entry( "a", {9,0}, [{"a",{7,0}}]), [{"a",{9,0}}] ),
+    ?assertEqual( store_entry( "b", {9,0}, [{"a",{7,0}}]), [{"a",{7,0}}, {"b",{9,0}}] ).
 
 -endif.
