@@ -21,6 +21,8 @@
         , add/2
         , min/1
         , min_key/1
+        , reset_with_same_ids/1
+        , delete_key/2
         ]).
 
 -export_type([vv/0]).
@@ -83,7 +85,17 @@ min_key(VV) ->
     {MinKey, _MinValue} = orddict:fold(Fun, Head, Tail),
     MinKey.
 
+%% @doc Returns the VV with the same entries, but with counters at zero.
+-spec reset_with_same_ids(vv()) -> vv().
+reset_with_same_ids(VV) ->
+    IDs = vv:ids(VV),
+    lists:foldl(fun(Id, Acc) -> vv:add(Acc, {Id,0}) end, vv:new(), IDs).
 
+
+%% @doc Returns the VV without the entry with a given key.
+-spec delete_key(vv(), id()) -> vv().
+delete_key(VV, Key) ->
+    orddict:erase(Key, VV).
 
 %% ===================================================================
 %% EUnit tests
@@ -102,6 +114,25 @@ min_key_test() ->
     ?assertEqual( "b", min_key(A2)),
     ?assertEqual( "a", min_key(A3)),
     ?assertEqual( "c", min_key(A4)),
+    ok.
+
+reset_with_same_ids_test() ->
+    E = [],
+    A0 = [{"a",2}],
+    A1 = [{"a",2}, {"b",4}, {"c",4}],
+    ?assertEqual(reset_with_same_ids(E), []),
+    ?assertEqual(reset_with_same_ids(A0), [{"a",0}]),
+    ?assertEqual(reset_with_same_ids(A1), [{"a",0}, {"b",0}, {"c",0}]),
+    ok.
+
+delete_key_test() ->
+    E = [],
+    A0 = [{"a",2}],
+    A1 = [{"a",2}, {"b",4}, {"c",4}],
+    ?assertEqual(delete_key(E, "a"), []),
+    ?assertEqual(delete_key(A0, "a"), []),
+    ?assertEqual(delete_key(A0, "b"), [{"a",2}]),
+    ?assertEqual(delete_key(A1, "a"), [{"b",4}, {"c",4}]),
     ok.
 
 

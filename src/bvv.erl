@@ -81,8 +81,6 @@ values_aux(N,B,L) ->
 
 %% @doc Adds a dot (ID, Counter) to a BVV.
 -spec add(bvv(), {id(), counter()}) -> bvv().
-add(BVV, {_Id, 0}) ->
-    norm_bvv(BVV);
 add(BVV, {Id, Counter}) ->
     Initial = add_aux({0,0}, Counter),
     Fun = fun (Entry) -> add_aux(Entry, Counter) end,
@@ -167,11 +165,12 @@ norm_test() ->
     ?assertEqual( norm_bvv( [{"a",{5,3}}] ), [{"a",{7,0}}] ).
 
 values_test() ->
+    ?assertEqual( lists:sort( values({0,0}) ), lists:sort( [] )),
     ?assertEqual( lists:sort( values({5,3}) ), lists:sort( [1,2,3,4,5,6,7] )),
     ?assertEqual( lists:sort( values({2,5}) ), lists:sort( [1,2,3,5] )).
 
 add_test() ->
-    ?assertEqual( add( [{"a",{5,3}}] , {"b",0} ), [{"a",{7,0}}] ),
+    ?assertEqual( add( [{"a",{5,3}}] , {"b",0} ), [{"a",{5,3}}, {"b",{0,0}}] ),
     ?assertEqual( add( [{"a",{5,3}}] , {"a",1} ), [{"a",{7,0}}] ),
     ?assertEqual( add( [{"a",{5,3}}] , {"a",8} ), [{"a",{8,0}}] ),
     ?assertEqual( add( [{"a",{5,3}}] , {"b",8} ), [{"a",{5,3}}, {"b",{0,128}}] ).
@@ -219,6 +218,7 @@ store_entry_test() ->
     ?assertEqual( store_entry( "a", {0,0}, [{"a",{7,0}}]), [{"a",{7,0}}] ),
     ?assertEqual( store_entry( "b", {0,0}, [{"a",{7,0}}]), [{"a",{7,0}}] ),
     ?assertEqual( store_entry( "a", {9,0}, [{"a",{7,0}}]), [{"a",{9,0}}] ),
+    ?assertEqual( store_entry( "a", {90,0}, [{"a",{7,1234}}]), [{"a",{90,0}}] ),
     ?assertEqual( store_entry( "b", {9,0}, [{"a",{7,0}}]), [{"a",{7,0}}, {"b",{9,0}}] ).
 
 -endif.
