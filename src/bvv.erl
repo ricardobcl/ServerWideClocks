@@ -19,6 +19,7 @@
         , norm/1
         , values/1
         , add/2
+        , merge/2
         , join/2
         , base/1
         , event/2
@@ -94,6 +95,12 @@ add_aux({N,B}, M) ->
         true  -> M2 = B bor (1 bsl (M-N-1)),
                  norm({N,M2})
     end.
+
+%% @doc Merges all entries from the two BVVs.
+-spec merge(bvv(), bvv()) -> bvv().
+merge(BVV1, BVV2) ->
+    FunMerge = fun (_Id, E1, E2) -> join_aux(E1, E2) end,
+    norm_bvv(orddict:merge(FunMerge, BVV1, BVV2)).
 
 %% @doc Joins entries from BVV2 that are also IDs in BVV1, into BVV1.
 -spec join(bvv(), bvv()) -> bvv().
@@ -183,12 +190,19 @@ add_aux_test() ->
     ?assertEqual( add_aux({2,5}, 6), {3,6} ),
     ?assertEqual( add_aux({2,4}, 6), {2,12} ).
 
+merge_test() ->
+    ?assertEqual( merge( [{"a",{5,3}}] , [{"a",{2,4}}] ), [{"a",{7,0}}] ),
+    ?assertEqual( merge( [{"a",{5,3}}] , [{"b",{2,4}}] ), [{"a",{7,0}}, {"b",{2,4}}] ),
+    ?assertEqual( merge( [{"a",{5,3}}, {"c",{1,2}}] , [{"b",{2,4}}, {"d",{5,3}}] ),
+                  [{"a",{7,0}}, {"b",{2,4}}, {"c",{1,2}}, {"d",{7,0}}] ),
+    ?assertEqual( merge( [{"a",{5,3}}, {"c",{1,2}}] , [{"b",{2,4}}, {"c",{5,3}}] ), 
+                  [{"a",{7,0}}, {"b",{2,4}}, {"c",{7,0}}]).
+
 join_test() ->
     ?assertEqual( join( [{"a",{5,3}}] , [{"a",{2,4}}] ), [{"a",{7,0}}] ),
     ?assertEqual( join( [{"a",{5,3}}] , [{"b",{2,4}}] ), [{"a",{7,0}}] ),
     ?assertEqual( join( [{"a",{5,3}}, {"c",{1,2}}] , [{"b",{2,4}}, {"d",{5,3}}] ), [{"a",{7,0}}, {"c",{1,2}}] ),
     ?assertEqual( join( [{"a",{5,3}}, {"c",{1,2}}] , [{"b",{2,4}}, {"c",{5,3}}] ), [{"a",{7,0}}, {"c",{7,0}}] ).
-
 
 join_aux_test() ->
     ?assertEqual( join_aux({5,3}, {2,4}), join_aux({2,4}, {5,3}) ),
