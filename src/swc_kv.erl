@@ -1,18 +1,19 @@
-%% @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%
-%% @doc  
-%% An Erlang implementation of a Dotted Causal Container.
-%% @end  
+%%    @author Ricardo Gonçalves <tome.wave@gmail.com>
+%%    @doc  
+%%    An Erlang implementation of Key-Value Logical Clock, 
+%%    in this case a Dotted Causal Container.
+%%    @end  
 
--module(dcc).
+-module('swc_kv').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("include/glc.hrl").
+-include_lib("include/swc.hrl").
 
+%% API exports
 -export([ new/0
         , values/1
         , context/1
@@ -31,7 +32,7 @@
 %% @doc Constructs a new clock set without causal history,
 %% and receives one value that goes to the anonymous list.
 -spec new() -> dcc().
-new() -> {orddict:new(), vv:new()}.
+new() -> {orddict:new(), swc_vv:new()}.
 
 
 %% @doc Returns the set of values held in the DCC.
@@ -59,7 +60,7 @@ sync({D1,V1}, {D2,V2}) ->
     % merge the two DCCs
     Dm = orddict:merge(FunMerge, D1, D2),
     % filter the outdated versions
-    FunFilter = fun ({Id,Counter}, _Val) -> Counter > min(vv:get(Id,V1), vv:get(Id,V2)) end,
+    FunFilter = fun ({Id,Counter}, _Val) -> Counter > min(swc_vv:get(Id,V1), swc_vv:get(Id,V2)) end,
     Df = orddict:filter(FunFilter, Dm),
     % calculate versions that are in both DCCs
     K1 = orddict:fetch_keys(D1),
@@ -68,31 +69,31 @@ sync({D1,V1}, {D2,V2}) ->
     % add these versions to the filtered list of versions
     D = orddict:merge(FunMerge, Df, Db),
     % return the new list of version and the merged VVs
-    {D, vv:join(V1,V2)}.
+    {D, swc_vv:join(V1,V2)}.
 
 %% @doc Adds the dots corresponding to each version in the DCC to the BVV; this
 %% is accomplished by using the standard fold higher-order function, passing
-%% the function bvv:add/2 defined over BVV and dots, the BVV, and the list of
+%% the function swc_node:add/2 defined over BVV and dots, the BVV, and the list of
 %% dots in the DCC.
 -spec add(bvv(), dcc()) -> bvv().
 add(BVV, {Versions,_VV}) ->
     Dots = orddict:fetch_keys(Versions),
-    lists:foldl(fun(Dot,Acc) -> bvv:add(Acc,Dot) end, BVV, Dots).
+    lists:foldl(fun(Dot,Acc) -> swc_node:add(Acc,Dot) end, BVV, Dots).
 
 %% @doc This function is to be used at node I after dcc:discard/2, and adds a
 %% mapping, from the Dot (I, N) (which should be obtained by previously applying
-%% bvv:event/2 to the BVV at node I) to the Value, to the DCC, and also advances
+%% swc_node:event/2 to the BVV at node I) to the Value, to the DCC, and also advances
 %% the i component of the VV in the DCC to N.
 -spec add(dcc(), {id(),counter()}, value()) -> dcc().
 add({D,V}, Dot, Value) ->
-    {orddict:store(Dot, Value, D), vv:add(V,Dot)}.
+    {orddict:store(Dot, Value, D), swc_vv:add(V,Dot)}.
 
 %% @doc It discards versions in DCC {D,V} which are made obsolete by a causal
 %% context (a version vector) C, and also merges C into DCC causal context V.
 -spec discard(dcc(), vv()) -> dcc().
 discard({D,V}, C) ->
-    FunFilter = fun ({Id,Counter}, _Val) -> Counter > vv:get(Id,C) end,
-    {orddict:filter(FunFilter, D), vv:join(V,C)}.
+    FunFilter = fun ({Id,Counter}, _Val) -> Counter > swc_vv:get(Id,C) end,
+    {orddict:filter(FunFilter, D), swc_vv:join(V,C)}.
 
 
 %% @doc It discards all entries from the version vector V in the DCC that are
@@ -104,10 +105,10 @@ discard({D,V}, C) ->
 strip({D,V}, B) ->
     FunFilter = 
         fun (Id,Counter) -> 
-            {Base,_Dots} = bvv:get(Id,B),
+            {Base,_Dots} = swc_node:get(Id,B),
             Counter > Base
         end,
-    {D, vv:filter(FunFilter, V)}.
+    {D, swc_vv:filter(FunFilter, V)}.
 
 
 %% @doc Function fill adds back causality information to a stripped DCC, before
@@ -116,10 +117,10 @@ strip({D,V}, B) ->
 fill({D,VV}, BVV) ->
     FunFold = 
         fun(Id, Acc) -> 
-            {Base,_D} = bvv:get(Id,BVV),
-            vv:add(Acc,{Id,Base})
+            {Base,_D} = swc_node:get(Id,BVV),
+            swc_vv:add(Acc,{Id,Base})
         end,
-    {D, lists:foldl(FunFold, VV, bvv:ids(BVV))}.
+    {D, lists:foldl(FunFold, VV, swc_node:ids(BVV))}.
 
 
 %% @doc Same as fill/2 but only adds entries that are elements of a list of Ids,
@@ -128,12 +129,12 @@ fill({D,VV}, BVV) ->
 fill({D,VV}, BVV, Ids) ->
     % only consider ids that belong to both the list of ids received and the BVV
     Ids2 = sets:to_list(sets:intersection(
-            sets:from_list(bvv:ids(BVV)), 
+            sets:from_list(swc_node:ids(BVV)), 
             sets:from_list(Ids))),
     FunFold = 
         fun(Id, Acc) -> 
-            {Base,_D} = bvv:get(Id,BVV),
-            vv:add(Acc,{Id,Base})
+            {Base,_D} = swc_node:get(Id,BVV),
+            swc_vv:add(Acc,{Id,Base})
         end,
     {D, lists:foldl(FunFold, VV, Ids2)}.
 

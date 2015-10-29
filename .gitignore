@@ -16,3 +16,4 @@ test/MANIFEST*
 test/*.log
 test/LOCK
 test/CURRENT
+_build/*

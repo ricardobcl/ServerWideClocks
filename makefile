@@ -1,39 +1,40 @@
-BASE_DIR = $(shell pwd)
-SUPPORT_DIR=$(BASE_DIR)/support
-ERLC ?= $(shell which erlc)
-ESCRIPT ?= $(shell which escript)
-ERL ?= $(shell which erl)
-APP := enkidb
-REBAR?= $(shell pwd)/rebar
+REBAR3_URL=https://s3.amazonaws.com/rebar3/rebar3
 
-$(if $(ERLC),,$(warning "Warning: No Erlang found in your path, this will probably not work"))
+# If there is a rebar in the current directory, use it
+ifeq ($(wildcard rebar3),rebar3)
+REBAR3 = $(CURDIR)/rebar3
+endif
 
-$(if $(ESCRIPT),,$(warning "Warning: No escript found in your path, this will probably not work"))
+# Fallback to rebar on PATH
+REBAR3 ?= $(shell test -e `which rebar3` 2>/dev/null && which rebar3 || echo "./rebar3")
 
-.PHONY: deps doc test
+# And finally, prep to download rebar if all else fails
+ifeq ($(REBAR3),)
+REBAR3 = $(CURDIR)/rebar3
+endif
 
-all: deps compile test dialyzer doc
+all: $(REBAR3)
+	@$(REBAR3) do clean, deps, compile, eunit, ct, dialyzer
 
-compile:
-	@$(REBAR) compile
-
-deps:
-	@$(REBAR) get-deps
-
-doc:
-	$(REBAR) doc skip_deps=true
-
-test:
-	$(REBAR) eunit skip_deps=true
-
-dialyzer: compile
-	@dialyzer -Wno_return -c ebin
+rel: all
+	@$(REBAR3) release
 
 clean:
-	@$(REBAR) clean
-	@rm -f t/*.beam t/temp.*
-	@rm -f doc/*.html doc/*.css doc/edoc-info doc/*.png doc/erlang.png
+	@$(REBAR3) clean
 
-distclean: clean
-	@$(REBAR) delete-deps
-	@rm -rf deps
+compile:
+	@$(REBAR3) compile
+
+deps:
+	@$(REBAR3) deps
+
+doc: compile
+	@$(REBAR3) edoc
+
+test: deps compile
+	@$(REBAR3) do eunit, ct, dialyzer
+
+
+$(REBAR3):
+	curl -Lo rebar3 $(REBAR3_URL) || wget $(REBAR3_URL)
+	chmod a+x rebar3

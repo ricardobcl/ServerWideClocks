@@ -1,18 +1,19 @@
-%% @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%
-%% @doc  
-%% An Erlang implementation of a Bitmapped Version Vector.
-%% @end  
+%%    @author Ricardo Gonçalves <tome.wave@gmail.com>
+%%    @doc  
+%%    An Erlang implementation of a Server Wide Logical Clock,
+%%    in this case a Bitmapped Version Vector.
+%%    @end  
 
--module(bvv).
+-module('swc_node').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("include/glc.hrl").
+-include_lib("include/swc.hrl").
 
+%% API exports
 -export([ new/0
         , ids/1
         , get/2
@@ -27,6 +28,10 @@
         ]).
 
 -export_type([bvv/0]).
+
+%%====================================================================
+%% API functions
+%%====================================================================
 
 %% @doc Constructs an empty BVV (an orddict in Erlang).
 -spec new() -> bvv().
@@ -159,9 +164,9 @@ store_entry(Id, Entry={N,0}, BVV) ->
 
 
 
-%% ===================================================================
+%%===================================================================
 %% EUnit tests
-%% ===================================================================
+%%===================================================================
 
 -ifdef(TEST).
 

@@ -1,9 +1,14 @@
+Server Wide Clocks (swc)
+=====
 
-# Global Logical Clocks
+This is an OTP library for Server Wide Clocks.
 
+There are 2 main files:
 
-To  run the test suite:
+  - the **node clock** -> implemented in swc_node.erl
+  - the **key-value clock** -> implemented in swc_kv.erl
 
-```
-make test
-'''
+Build
+-----
+
+  $ make

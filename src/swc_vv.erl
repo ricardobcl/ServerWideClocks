@@ -1,18 +1,18 @@
-%% @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%
-%% @doc  
-%% An Erlang implementation of a Version Vector.
-%% @end  
+%%    @author Ricardo Gonçalves <tome.wave@gmail.com>
+%%    @doc  
+%%    An Erlang implementation of a Version Vector.
+%%    @end  
 
--module(vv).
+-module('swc_vv').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("include/glc.hrl").
+-include_lib("include/swc.hrl").
 
+%% API exports
 -export([ new/0
         , ids/1
         , get/2
@@ -88,8 +88,8 @@ min_key(VV) ->
 %% @doc Returns the VV with the same entries, but with counters at zero.
 -spec reset_with_same_ids(vv()) -> vv().
 reset_with_same_ids(VV) ->
-    IDs = vv:ids(VV),
-    lists:foldl(fun(Id, Acc) -> vv:add(Acc, {Id,0}) end, vv:new(), IDs).
+    IDs = ids(VV),
+    lists:foldl(fun(Id, Acc) -> add(Acc, {Id,0}) end, new(), IDs).
 
 
 %% @doc Returns the VV without the entry with a given key.
