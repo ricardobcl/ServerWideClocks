@@ -11,4 +11,6 @@ There are 2 main files:
 Build
 -----
 
-  $ make
+```shell
+> make all
+```
