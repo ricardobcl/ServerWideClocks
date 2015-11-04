@@ -1,4 +1,4 @@
-Server Wide Clocks (swc)
+Server Wide Clocks (swc)  [![Build Status](https://travis-ci.org/ricardobcl/ServerWideClocks.svg)](https://travis-ci.org/ricardobcl/ServerWideClocks)
 =====
 
 This is an OTP library for Server Wide Clocks.

@@ -1,0 +1,5 @@
+language: erlang
+otp_release:
+   - 17.4
+   - 18.0
+script: "make all"
