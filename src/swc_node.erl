@@ -19,6 +19,7 @@
         , get/2
         , norm/1
         , values/1
+        , subtract_dots/2
         , add/2
         , merge/2
         , join/2
@@ -69,6 +70,16 @@ norm_bvv(BVV) ->
     FunFilter = fun (_Id, E) -> E =/= {0,0} end,
     orddict:filter(FunFilter, BVV1).
 
+-spec subtract_dots(entry(), entry()) -> [counter()].
+subtract_dots({N1,B1}, {N2,B2}) when N1 > N2 ->
+    Dots1 = lists:seq(N2+1,N1) ++ values_aux(N1,B1,[]),
+    Dots2 = values_aux(N2,B2,[]),
+    ordsets:subtract(Dots1, Dots2);
+subtract_dots({N1,B1}, {N2,B2}) when N1 =< N2 ->
+    Dots1 = values_aux(N1,B1,[]),
+    Dots2 = lists:seq(N1+1,N2) ++ values_aux(N2,B2,[]),
+    ordsets:subtract(Dots1, Dots2).
+
 %% @doc Returns the sequence numbers for the dots represented by an entry.
 -spec values(entry()) -> [counter()].
 values({N,B}) ->
@@ -77,7 +88,7 @@ values({N,B}) ->
 %% @doc Returns the sequence numbers for the dots represented by a bitmap. It's
 %% an auxiliary function used by values/1.
 -spec values_aux(counter(), counter(), [counter()]) -> [counter()].
-values_aux(_,0,L) -> L;
+values_aux(_,0,L) -> lists:reverse(L);
 values_aux(N,B,L) ->
     M = N + 1,
     case B rem 2 of
@@ -180,6 +191,17 @@ values_test() ->
     ?assertEqual( lists:sort( values({0,0}) ), lists:sort( [] )),
     ?assertEqual( lists:sort( values({5,3}) ), lists:sort( [1,2,3,4,5,6,7] )),
     ?assertEqual( lists:sort( values({2,5}) ), lists:sort( [1,2,3,5] )).
+
+
+subtract_dots_test() ->
+    ?assertEqual( subtract_dots({12,0},{5,14}), [6,10,11,12]),
+    ?assertEqual( subtract_dots({7,0},{5,14}), [6]),
+    ?assertEqual( subtract_dots({4,0},{5,14}), []),
+    ?assertEqual( subtract_dots({5,0},{5,14}), []),
+    ?assertEqual( subtract_dots({5,0},{15,0}), []),
+    ?assertEqual( subtract_dots({7,10},{5,14}), [6,11]),
+    ?assertEqual( subtract_dots({5,10},{7,10}), []),
+    ?assertEqual( subtract_dots({5,14},{7,10}), [8]).
 
 add_test() ->
     ?assertEqual( add( [{"a",{5,3}}] , {"b",0} ), [{"a",{5,3}}, {"b",{0,0}}] ),
