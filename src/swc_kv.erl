@@ -1,8 +1,8 @@
 %%    @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%    @doc  
-%%    An Erlang implementation of Key-Value Logical Clock, 
+%%    @doc
+%%    An Erlang implementation of Key-Value Logical Clock,
 %%    in this case a Dotted Causal Container.
-%%    @end  
+%%    @en
 
 -module('swc_kv').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
@@ -11,7 +11,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("swc/include/swc.hrl").
+-include_lib("include/swc.hrl").
 
 %% API exports
 -export([ new/0

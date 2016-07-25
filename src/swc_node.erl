@@ -1,8 +1,8 @@
 %%    @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%    @doc  
+%%    @doc
 %%    An Erlang implementation of a Server Wide Logical Clock,
 %%    in this case a Bitmapped Version Vector.
-%%    @end  
+%%    @end
 
 -module('swc_node').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
@@ -11,7 +11,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("swc/include/swc.hrl").
+-include_lib("include/swc.hrl").
 
 %% API exports
 -export([ new/0
@@ -19,7 +19,7 @@
         , get/2
         , norm/1
         , values/1
-        , subtract_dots/2
+        , missing_dots/3
         , add/2
         , merge/2
         , join/2
@@ -69,6 +69,29 @@ norm_bvv(BVV) ->
     % remove `{0,0}` entries
     FunFilter = fun (_Id, E) -> E =/= {0,0} end,
     orddict:filter(FunFilter, BVV1).
+
+%% @doc Returns the dots in the first clock that are missing from the second clock,
+%% but only from entries in the list of ids received as argument.
+-spec missing_dots(bvv(), bvv(), [id()]) -> [{id(),[counter()]}].
+missing_dots(B1, B2, Ids) ->
+    Fun =
+        fun (K,V,Acc) ->
+            case lists:member(K, Ids) of
+                false -> Acc;
+                true ->
+                    case orddict:find(K,B2) of
+                        error ->
+                            [{K,values(V)} | Acc];
+                        {ok, V2} ->
+                            case subtract_dots(V,V2) of
+                                [] -> Acc;
+                                X -> [{K,X} | Acc]
+                            end
+                    end
+            end
+        end,
+    orddict:fold(Fun,[],B1).
+
 
 -spec subtract_dots(entry(), entry()) -> [counter()].
 subtract_dots({N1,B1}, {N2,B2}) when N1 > N2 ->
@@ -191,6 +214,16 @@ values_test() ->
     ?assertEqual( lists:sort( values({0,0}) ), lists:sort( [] )),
     ?assertEqual( lists:sort( values({5,3}) ), lists:sort( [1,2,3,4,5,6,7] )),
     ?assertEqual( lists:sort( values({2,5}) ), lists:sort( [1,2,3,5] )).
+
+missing_dots_test() ->
+    B1 = [{"a",{12,0}}, {"b",{7,0}}, {"c",{4,0}}, {"d",{5,0}}, {"e",{5,0}}, {"f",{7,10}}, {"g",{5,10}}, {"h",{5,14}}],
+    B2 = [{"a",{5,14}}, {"b",{5,14}}, {"c",{5,14}}, {"d",{5,14}}, {"e",{15,0}}, {"f",{5,14}}, {"g",{7,10}}, {"h",{7,10}}],
+    ?assertEqual( lists:sort(missing_dots(B1,B2,[])), []),
+    ?assertEqual( lists:sort(missing_dots(B1,B2,["a","b","c","d","e","f","g","h"])), [{"a",[6,10,11,12]}, {"b",[6]}, {"f",[6,11]}, {"h",[8]}]),
+    ?assertEqual( lists:sort(missing_dots(B1,B2,["a","c","d","e","f","g","h"])), [{"a",[6,10,11,12]}, {"f",[6,11]}, {"h",[8]}]),
+    ?assertEqual( lists:sort(missing_dots([{"a",{2,2}}, {"b",{3,0}}], [], ["a"])), [{"a",[1,2,4]}]),
+    ?assertEqual( lists:sort(missing_dots([{"a",{2,2}}, {"b",{3,0}}], [], ["a","b"])), [{"a",[1,2,4]}, {"b",[1,2,3]}]),
+    ?assertEqual( missing_dots([], B1, ["a","b","c","d","e","f","g","h"]), []).
 
 
 subtract_dots_test() ->

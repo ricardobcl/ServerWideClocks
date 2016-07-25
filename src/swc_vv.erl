@@ -1,7 +1,7 @@
 %%    @author Ricardo Gonçalves <tome.wave@gmail.com>
-%%    @doc  
+%%    @doc
 %%    An Erlang implementation of a Version Vector.
-%%    @end  
+%%    @end
 
 -module('swc_vv').
 -author('Ricardo Gonçalves <tome.wave@gmail.com>').
@@ -10,7 +10,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("swc/include/swc.hrl").
+-include_lib("include/swc.hrl").
 
 %% API exports
 -export([ new/0
@@ -21,7 +21,7 @@
         , add/2
         , min/1
         , min_key/1
-        , reset_with_same_ids/1
+        , reset_counters/1
         , delete_key/2
         ]).
 
@@ -38,7 +38,7 @@ ids(V) ->
 
 %% @doc Returns the counter associated with an id K. If the key is not present
 %% in the VV, it returns 0.
--spec get(id(), vv()) -> {ok, counter()} | error.
+-spec get(id(), vv()) -> counter().
 get(K,V) ->
     case orddict:find(K,V) of
         error   -> 0;
@@ -86,10 +86,9 @@ min_key(VV) ->
     MinKey.
 
 %% @doc Returns the VV with the same entries, but with counters at zero.
--spec reset_with_same_ids(vv()) -> vv().
-reset_with_same_ids(VV) ->
-    IDs = ids(VV),
-    lists:foldl(fun(Id, Acc) -> add(Acc, {Id,0}) end, new(), IDs).
+-spec reset_counters(vv()) -> vv().
+reset_counters(VV) ->
+    orddict:map(fun (_Id,_Counter) -> 0 end, VV).
 
 
 %% @doc Returns the VV without the entry with a given key.
@@ -116,13 +115,13 @@ min_key_test() ->
     ?assertEqual( "c", min_key(A4)),
     ok.
 
-reset_with_same_ids_test() ->
+reset_counters_test() ->
     E = [],
     A0 = [{"a",2}],
     A1 = [{"a",2}, {"b",4}, {"c",4}],
-    ?assertEqual(reset_with_same_ids(E), []),
-    ?assertEqual(reset_with_same_ids(A0), [{"a",0}]),
-    ?assertEqual(reset_with_same_ids(A1), [{"a",0}, {"b",0}, {"c",0}]),
+    ?assertEqual(reset_counters(E), []),
+    ?assertEqual(reset_counters(A0), [{"a",0}]),
+    ?assertEqual(reset_counters(A1), [{"a",0}, {"b",0}, {"c",0}]),
     ok.
 
 delete_key_test() ->
