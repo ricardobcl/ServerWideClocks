@@ -10,7 +10,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("include/swc.hrl").
+-include_lib("swc/include/swc.hrl").
 
 %% API exports
 -export([ new/0

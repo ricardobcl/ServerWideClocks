@@ -11,11 +11,11 @@
 
 -compile({no_auto_import,[min/2]}).
 
+-include_lib("swc/include/swc.hrl").
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
-
--include_lib("include/swc.hrl").
 
 %% API exports
 -export([ new/0
