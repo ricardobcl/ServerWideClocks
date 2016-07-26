@@ -21,6 +21,8 @@
 -export([ new/0
         , add/3
         , add/4
+        , add_peer/2
+        , add_peers/2
         , min/2
         , peers/1
         , get/3
@@ -32,11 +34,23 @@
 new() ->
     orddict:new().
 
+-spec add_peer(vv_matrix(), id()) -> vv_matrix().
+add_peer(M, Peer) -> add_peers(M, [Peer]).
+
+-spec add_peers(vv_matrix(), [id()]) -> vv_matrix().
+add_peers(M, []) -> M;
+add_peers(M, [NewPeer|T]) ->
+    CurrentPeers = orddict:fetch_keys(M),
+    NewEntry = lists:foldl(fun (Id, Acc) -> swc_vv:add(Acc, {Id,0}) end, swc_vv:new(), [NewPeer | CurrentPeers]),
+    M2 = orddict:store(NewPeer, NewEntry, M),
+    M3 = orddict:map(fun (_,V) -> swc_vv:add(V, {NewPeer,0}) end, M2),
+    add_peers(M3, T).
+
 -spec add(vv_matrix(), id(), bvv()) -> vv_matrix().
 add(M, EntryId, C) ->
     Peers = case orddict:find(EntryId, M) of
-                error -> peers(M);
-                {ok, E} -> peers(M) ++ swc_vv:ids(E)
+                error   -> [EntryId | peers(M)];
+                {ok, E} -> [EntryId | peers(M)] ++ swc_vv:ids(E)
             end,
     VV1 = orddict:map(fun (_,{B,_}) -> B end, C),
     VV2 = orddict:filter(fun (K,_) -> lists:member(K,Peers) end, VV1),
@@ -113,6 +127,19 @@ add_test() ->
     ?assertEqual( M8, [{"a",[{"a",12}, {"b",7}, {"c",10}]}, {"c",[{"c",20}]}]),
     ?assertEqual( M9, [{"a",[{"a",5},  {"b",5}, {"c",50}]}, {"c",[{"c",20}]}]).
 
+add_peers_test() ->
+    M = new(),
+    M1 = add(M, "a", "b",4),
+    M2 = add(M1, "a", "c",10),
+    M3 = add(M2, "c", "c",2),
+    M4 = add(M3, "c", "c",20),
+    ?assertEqual( add_peer(M, "z"),                [{"z",[{"z",0}]}]),
+    ?assertEqual( add_peer(M, "z"),                add_peers(M,["z","z"])),
+    ?assertEqual( add_peer(add_peer(M, "z"), "l"), [{"l",[{"l",0},{"z",0}]}, {"z",[{"l",0},{"z",0}]}]),
+    ?assertEqual( add_peer(add_peer(M, "z"), "l"), add_peers(M,["l","z"])),
+    ?assertEqual( add_peer(add_peer(M, "z"), "l"), add_peers(M,["z","l"])),
+    ?assertEqual( add_peer(M4, "z"),    [{"a",[{"b",4}, {"c",10}, {"z",0}]}, {"c",[{"c",20},{"z",0}]}, {"z",[{"a",0},{"c",0},{"z",0}]}]),
+    ?assertEqual( add_peers(M4, ["z"]), [{"a",[{"b",4}, {"c",10}, {"z",0}]}, {"c",[{"c",20},{"z",0}]}, {"z",[{"a",0},{"c",0},{"z",0}]}]).
 
 min_test() ->
     M = new(),
