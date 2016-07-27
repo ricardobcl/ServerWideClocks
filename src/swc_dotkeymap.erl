@@ -65,34 +65,49 @@ size({_,D}, Id) ->
         {ok, V} -> orddict:size(V)
     end.
 
--spec prune(key_matrix(), vv_matrix()) -> {key_matrix(), RemovedKeys :: [id()]}.
-prune({{Id, Base, KL}, D}, M) ->
-    OwnerMin = swc_watermark:min(M, Id),
-    {RemovedKeys, Base2, KL2} =
-        case OwnerMin > Base of
-            false -> % we don't need to remove any keys from the log
-                {[], Base, KL};
-            true  -> % we can remove keys and shrink the key_matrix
-                {RemKeys, CurrentKeys} = lists:split(OwnerMin - Base, KL),
-                {RemKeys, OwnerMin, CurrentKeys}
-        end,
-    {RemovedKeys2, D2} = orddict:fold(fun (K,V,Acc) ->
-                                              ToList = orddict:to_list(V),
-                                              Min = swc_watermark:min(M, K),
-                                              prune_filter(K, Min, ToList, [], Acc)
-                                      end, {[], orddict:new()}, D),
-    {{{Id,Base2,KL2}, D2}, RemovedKeys ++ RemovedKeys2}.
+-spec prune(key_matrix(), vv_matrix()) -> {key_matrix(), RemovedKeys :: [{id(), [{counter(),id()}]}]}.
+prune({O,D}, M) ->
+    {O2, R1} = prune_owner(O,M),
+    {D2, R2} = prune_peers(D,M),
+    {{O2,D2}, R1 ++ R2}.
 
--spec prune_filter(id(), counter(), [{counter(), id()}], [{counter(), id()}], {[id()], orddict:orddict()}) -> {[id()], orddict:orddict()}.
-prune_filter(_, _, [], [], {R,D}) ->
-    {R,D};
-prune_filter(Id, _, [], List, {R,D}) ->
-    Dict = orddict:from_list(List),
-    {R, orddict:store(Id, Dict, D)};
-prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C =< Min ->
-    prune_filter(Id, Min, T, Acc, {[K|RKs],D});
-prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C > Min ->
-    prune_filter(Id, Min, T, [{C,K}|Acc], {RKs,D}).
+prune_owner(O={Id, Base, KL}, M) ->
+    OwnerMin = swc_watermark:min(M, Id),
+    case OwnerMin > Base of
+        false -> % we don't need to remove any keys from the owner log
+            {O, []};
+        true  -> % we can remove keys and shrink the owner log
+            {RemovedKeys, CurrentKeys} = lists:split(OwnerMin - Base, KL),
+            {_,RemovedKeys2} = lists:foldl(fun (Key, {B,Res}) -> {B+1, [{B+1,Key}|Res]} end, {Base,[]}, RemovedKeys),
+            {{Id, OwnerMin, CurrentKeys}, [{Id, RemovedKeys2}]}
+    end.
+
+prune_peers(D,M) ->
+    orddict:fold(
+        fun (Peer, V, {KeepDic, RemoveDic}) ->
+            Min = swc_watermark:min(M, Peer),
+            Keep   = orddict:filter(fun (Counter,_) -> Counter  > Min end, V),
+            Remove = orddict:filter(fun (Counter,_) -> Counter =< Min end, V),
+            case {orddict:is_empty(Keep), orddict:is_empty(Remove)} of
+                {true ,true}  -> {KeepDic,                               RemoveDic};
+                {false,true}  -> {orddict:store(Peer, Keep, KeepDic),    RemoveDic};
+                {true ,false} -> {KeepDic,                               orddict:store(Peer, Remove, RemoveDic)};
+                {false,false} -> {orddict:store(Peer, Keep, KeepDic),    orddict:store(Peer, Remove, RemoveDic)}
+            end
+            % prune_filter(K, Min, ToList, [], Acc)
+        end,
+        {orddict:new(), orddict:new()}, D).
+
+% -spec prune_filter(id(), counter(), [{counter(), id()}], [{counter(), id()}], {[id()], orddict:orddict()}) -> {[id()], orddict:orddict()}.
+% prune_filter(_, _, [], [], {R,D}) ->
+%     {R,D};
+% prune_filter(Id, _, [], List, {R,D}) ->
+%     Dict = orddict:from_list(List),
+%     {R, orddict:store(Id, Dict, D)};
+% prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C =< Min ->
+%     prune_filter(Id, Min, T, Acc, {[K|RKs],D});
+% prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C > Min ->
+%     prune_filter(Id, Min, T, [{C,K}|Acc], {RKs,D}).
 
 
 -spec get_keys(key_matrix(), [{id(),[counter()]}]) -> [id()].
@@ -181,12 +196,12 @@ prune_test() ->
     M6 = swc_watermark:add(M5, "z", "c",190),
     M7 = swc_watermark:add(M6, "c", "c",200),
     ?assertEqual( prune(K5, M1) , {{{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, []}),
-    ?assertEqual( prune(K5, M2) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, ["k1"]}),
-    ?assertEqual( prune(K5, M3) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, ["k1"]}),
-    ?assertEqual( prune(K5, M4) , {{{"a", 2, []}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, ["k1","k2"]}),
-    ?assertEqual( prune(K5, M5) , {{{"a", 2, []}, [{"c",[{20,"kc"}]}]}, ["k1","k2","kb","kb2"]}),
-    ?assertEqual( prune(K5, M6) , {{{"a", 2, []}, [{"c",[{20,"kc"}]}]}, ["k1","k2","kb","kb2"]}),
-    ?assertEqual( prune(K5, M7) , {{{"a", 2, []}, []}, ["k1","k2","kc","kb","kb2"]}).
+    ?assertEqual( prune(K5, M2) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, [{"a",[{1,"k1"}]}]}),
+    ?assertEqual( prune(K5, M3) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, [{"a",[{1,"k1"}]}]}),
+    ?assertEqual( prune(K5, M4) , {{{"a", 2, []}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, [{"a",[{2,"k2"}, {1,"k1"}]}]}),
+    ?assertEqual( prune(K5, M5) , {{{"a", 2, []}, [{"c",[{20,"kc"}]}]}, [{"a",[{2,"k2"}, {1,"k1"}]}, {"b",[{2,"kb2"},{4,"kb"}]}]}),
+    ?assertEqual( prune(K5, M6) , {{{"a", 2, []}, [{"c",[{20,"kc"}]}]}, [{"a",[{2,"k2"}, {1,"k1"}]}, {"b",[{2,"kb2"},{4,"kb"}]}]}),
+    ?assertEqual( prune(K5, M7) , {{{"a", 2, []}, []}, [{"a",[{2,"k2"}, {1,"k1"}]}, {"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}).
 
 get_keys_test() ->
     K1 = add_owner(new("a"), "k1"),
