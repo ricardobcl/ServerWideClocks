@@ -48,8 +48,12 @@ add_peer(M, NewPeer, ItsPeers) ->
 update_peer(M, EntryId, NodeClock) ->
     NodeClockBase = orddict:map(fun (_,{B,_}) -> B end, NodeClock),
     orddict:map(fun (Id, OldVV) ->
-                    Counter = swc_vv:get(Id, NodeClockBase),
-                    swc_vv:add(OldVV, {EntryId, Counter})
+                    case swc_vv:is_key(OldVV, EntryId) of
+                        false -> OldVV;
+                        true  ->
+                            Counter = swc_vv:get(Id, NodeClockBase),
+                            swc_vv:add(OldVV, {EntryId, Counter})
+                    end
                 end,
                 M).
 
@@ -120,10 +124,10 @@ update_test() ->
     ?assertEqual( M4,  M5),
     ?assertEqual( M6,  [{"a",[{"b",4},  {"c",12}]},   {"c",[{"c",20}]}]),
     ?assertEqual( M7,  [{"a",[{"b",4},  {"c",10}]},   {"c",[{"c",50}]}]),
-    ?assertEqual( M8,  [{"a",[{"a",12}, {"b",4}, {"c",10}]},   {"c",[{"a",4}, {"c",20}]}]),
-    ?assertEqual( M9,  [{"a",[{"a",5},  {"b",4}, {"c",10}]},   {"c",[{"a",50}, {"c",20}]}]),
-    ?assertEqual( M10, [{"a",[{"b",12}, {"c",10}]},   {"c",[{"b",4},  {"c",20}]}]),
-    ?assertEqual( M11, [{"a",[{"b",5},  {"c",10}]},   {"c",[{"b",50}, {"c",20}]}]).
+    ?assertEqual( M8,  [{"a",[{"b",4},  {"c",10}]},   {"c",[{"c",20}]}]),
+    ?assertEqual( M9,  [{"a",[{"b",4},  {"c",10}]},   {"c",[{"c",20}]}]),
+    ?assertEqual( M10, [{"a",[{"b",12}, {"c",10}]},   {"c",[{"c",20}]}]),
+    ?assertEqual( M11, [{"a",[{"b",5},  {"c",10}]},   {"c",[{"c",20}]}]).
 
 add_peers_test() ->
     M = new(),

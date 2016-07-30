@@ -15,6 +15,7 @@
 %% API exports
 -export([ new/0
         , ids/1
+        , is_key/2
         , get/2
         , join/2
         , filter/2
@@ -35,6 +36,10 @@ new() -> orddict:new().
 -spec ids(vv()) -> [id()].
 ids(V) ->
     orddict:fetch_keys(V).
+
+-spec is_key(vv(), id()) -> boolean().
+is_key(VV, Id) ->
+    orddict:is_key(Id, VV).
 
 %% @doc Returns the counter associated with an id K. If the key is not present
 %% in the VV, it returns 0.
