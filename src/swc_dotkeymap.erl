@@ -98,17 +98,6 @@ prune_peers(D,M) ->
         end,
         {orddict:new(), orddict:new()}, D).
 
-% -spec prune_filter(id(), counter(), [{counter(), id()}], [{counter(), id()}], {[id()], orddict:orddict()}) -> {[id()], orddict:orddict()}.
-% prune_filter(_, _, [], [], {R,D}) ->
-%     {R,D};
-% prune_filter(Id, _, [], List, {R,D}) ->
-%     Dict = orddict:from_list(List),
-%     {R, orddict:store(Id, Dict, D)};
-% prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C =< Min ->
-%     prune_filter(Id, Min, T, Acc, {[K|RKs],D});
-% prune_filter(Id, Min, [{C,K}|T], Acc, {RKs,D}) when C > Min ->
-%     prune_filter(Id, Min, T, [{C,K}|Acc], {RKs,D}).
-
 
 -spec get_keys(key_matrix(), [{id(),[counter()]}]) -> [id()].
 get_keys(K, L) -> get_keys(K, L, []).
@@ -189,12 +178,12 @@ prune_test() ->
     K4 = add_dot(K3, "b", "kb2", 2),
     K5 = add_dot(K4, "c", "kc", 20),
     M1 = swc_watermark:new(),
-    M2 = swc_watermark:add(M1, "a", "c",1),
-    M3 = swc_watermark:add(M2, "a", "a",2),
-    M4 = swc_watermark:add(M3, "a", "c",2),
-    M5 = swc_watermark:add(M4, "b", "x",10),
-    M6 = swc_watermark:add(M5, "z", "c",190),
-    M7 = swc_watermark:add(M6, "c", "c",200),
+    M2 = swc_watermark:update_cell(M1, "a", "c",1),
+    M3 = swc_watermark:update_cell(M2, "a", "a",2),
+    M4 = swc_watermark:update_cell(M3, "a", "c",2),
+    M5 = swc_watermark:update_cell(M4, "b", "x",10),
+    M6 = swc_watermark:update_cell(M5, "z", "c",190),
+    M7 = swc_watermark:update_cell(M6, "c", "c",200),
     ?assertEqual( prune(K5, M1) , {{{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, []}),
     ?assertEqual( prune(K5, M2) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, [{"a",[{1,"k1"}]}]}),
     ?assertEqual( prune(K5, M3) , {{{"a", 1, ["k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}, [{"a",[{1,"k1"}]}]}),
