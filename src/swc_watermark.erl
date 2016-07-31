@@ -60,12 +60,11 @@ update_peer(M, EntryId, NodeClock) ->
 
 -spec join(vv_matrix(), vv_matrix()) -> vv_matrix().
 join(A,B) ->
-    % filter peers from B that are not in A
+    % filter entry peers from B that are not in A
     PeersA = peers(A),
     FunFilter = fun (Id,_) -> lists:member(Id, PeersA) end,
     B2 = orddict:filter(FunFilter, B),
-    B3 = orddict:map(fun (_,V) -> orddict:filter(FunFilter,V) end, B2),
-    orddict:merge(fun (_,V1,V2) -> swc_vv:join(V1,V2) end, A, B3).
+    orddict:merge(fun (_,V1,V2) -> swc_vv:join(V1,V2) end, A, B2).
 
 -spec update_cell(vv_matrix(), id(), id(), counter()) -> vv_matrix().
 update_cell(M, EntryId, PeerId, Counter) ->
@@ -142,12 +141,12 @@ join_test() ->
     A = [{"a",[{"b",4}, {"c",10}]}, {"c",[{"c",20}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}],
     B = [{"a",[{"b",2}, {"c",10}]}, {"b",[]}, {"c",[{"c",22}]}],
     C = [{"z",[{"a",1}, {"b",0}, {"z",4}]}],
-    ?assertEqual( join(A,B), [{"a",[{"b",4}, {"c",10}]}, {"c",[{"c",22}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}]),
-    ?assertEqual( join(A,C), [{"a",[{"b",4}, {"c",10}]}, {"c",[{"c",20}]}, {"z",[{"a",1},{"t1",0},{"t2",0},{"z",4}]}]),
-    ?assertEqual( join(B,A), [{"a",[{"b",4}, {"c",10}]}, {"b",[]}, {"c",[{"c",22}]}]),
-    ?assertEqual( join(B,C), [{"a",[{"b",2}, {"c",10}]}, {"b",[]}, {"c",[{"c",22}]}]),
-    ?assertEqual( join(C,A), [{"z",[{"a",1}, {"b",0}, {"z",4}]}]),
-    ?assertEqual( join(C,B), [{"z",[{"a",1}, {"b",0}, {"z",4}]}]).
+    ?assertEqual( join(A,B), [{"a",[{"b",4},{"c",10}]}, {"c",[{"c",22}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}]),
+    ?assertEqual( join(A,C), [{"a",[{"b",4},{"c",10}]}, {"c",[{"c",20}]}, {"z",[{"a",1},{"b",0},{"t1",0},{"t2",0},{"z",4}]}]),
+    ?assertEqual( join(B,A), [{"a",[{"b",4},{"c",10}]}, {"b",[]}, {"c",[{"c",22}]}]),
+    ?assertEqual( join(B,C), [{"a",[{"b",2},{"c",10}]}, {"b",[]}, {"c",[{"c",22}]}]),
+    ?assertEqual( join(C,A), [{"z",[{"a",1},{"b",0},{"t1",0},{"t2",0},{"z",4}]}]),
+    ?assertEqual( join(C,B), [{"z",[{"a",1},{"b",0},{"z",4}]}]).
 
 
 add_peers_test() ->
