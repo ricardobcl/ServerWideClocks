@@ -22,6 +22,7 @@
         , empty/1
         , add_owner/2
         , add_dot/4
+        , add_objects/2
         , size/1
         , size/2
         , prune/2
@@ -51,6 +52,20 @@ add_dot({O,D}, Id, Key, Counter) ->
                         orddict:store(Counter, Key, orddict:new()),
                         D),
     {O, D2}.
+
+
+-spec add_objects(key_matrix(), [{Key::id(), Object::dcc()}]) -> key_matrix().
+add_objects(DKM, []) -> DKM;
+add_objects(DKM, [{Key,Obj}|T]) ->
+    {Dots,_} = Obj,
+    DKM2 = orddict:fold(
+             fun (_Dot={Id,Counter},_,Acc) ->
+                     add_dot(Acc, Id, Key, Counter)
+             end,
+             DKM, Dots),
+    add_objects(DKM2, T).
+
+
 
 -spec size(key_matrix()) -> non_neg_integer().
 size({{_,_,L},D}) ->
@@ -136,11 +151,19 @@ add_test() ->
     K3 = add_dot(K2, "b", "kb", 4),
     K4 = add_dot(K3, "b", "kb2", 2),
     K5 = add_dot(K4, "c", "kc", 20),
+    O1 = { [{{"z",8}, "red"}, {{"z",11}, "purple"}, {{"b",3}, "green"}] , [{"a",11}] },
+    O2 = { [{{"b",11}, "purple"}] , [{"a",4}, {"b",20}] },
+    K6 = add_objects(K1, [{"k100",O1}, {"k200",O2}]),
+    K7 = add_objects(K1, [{"k200",O2}, {"k100",O1}]),
+    K8 = add_objects(K5, [{"k200",O2}, {"k100",O1}]),
     ?assertEqual( K1 , {{"a", 0, ["k1"]}, []}),
     ?assertEqual( K2 , {{"a", 0, ["k1", "k2"]}, []}),
     ?assertEqual( K3 , {{"a", 0, ["k1", "k2"]}, [{"b",[{4,"kb"}]}]}),
     ?assertEqual( K4 , {{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}]}),
-    ?assertEqual( K5 , {{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}).
+    ?assertEqual( K5 , {{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}),
+    ?assertEqual( K6 , {{"a", 0, ["k1"]}, [{"b",[{3,"k100"},{11,"k200"}]}, {"z",[{8,"k100"}, {11,"k100"}]}]}),
+    ?assertEqual( K6 , K7),
+    ?assertEqual( K8 , {{"a", 0, ["k1", "k2"]}, [{"b",[{2,"kb2"},{3,"k100"},{4,"kb"},{11,"k200"}]}, {"c",[{20,"kc"}]}, {"z",[{8,"k100"}, {11,"k100"}]}]}).
 
 
 empty_test() ->
