@@ -5,7 +5,7 @@
 
 -type bvv()     :: [{Key :: id(), Entry :: entry()}]. % orddict().
 
--type key_matrix()  :: {{id(), counter(), [id()]}, orddict:orddict()}.
+-type key_matrix()  :: [{Node :: id(), DotKey :: [{counter(), id()}]}]. % orddict().
 
 -type vv_matrix() :: orddict:orddict().
 
