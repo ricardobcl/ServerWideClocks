@@ -66,8 +66,12 @@ replace_peer(M, Old, New) ->
     M2 = add_peer(M, New, OldPeers),
     M3 = orddict:erase(Old, M2),
     orddict:map(fun(_K,V) ->
-                        V2 = swc_vv:delete_key(V, Old),
-                        swc_vv:add(V2, {New, 0})
+                    case orddict:find(Old, V) of
+                        error -> V;
+                        {ok, _} ->
+                            V2 = swc_vv:delete_key(V, Old),
+                            swc_vv:add(V2, {New, 0})
+                    end
                 end, M3).
 
 -spec join(vv_matrix(), vv_matrix()) -> vv_matrix().
@@ -238,8 +242,10 @@ replace_peer_test() ->
     B = add_peer(A,     "b", ["a","c"]),
     C = add_peer(B,     "c", ["a","b"]),
     Z = [{"a",[{"a",9},{"c",2},{"z",3}]}, {"c",[{"a",1},{"c",4},{"z",3}]}, {"z", [{"a",0},{"c",1},{"z",2}]}],
+    W = [{"b",[{"a",9},{"b",2},{"c",3}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}],
     ?assertEqual( replace_peer(C,"b","z"), [{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}]),
-    ?assertEqual( replace_peer(Z,"a","b"), [{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}]).
+    ?assertEqual( replace_peer(Z,"a","b"), [{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}]),
+    ?assertEqual( replace_peer(W,"b","z"), [{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}]).
 
 -endif.
 
