@@ -48,23 +48,26 @@ add_peer(M, NewPeer, ItsPeers) ->
 
 -spec update_peer(vv_matrix(), id(), bvv()) -> vv_matrix().
 update_peer(M, EntryId, NodeClock) ->
-    NodeClockBase = orddict:map(fun (_,{B,_}) -> B end, NodeClock),
     orddict:map(fun (Id, OldVV) ->
                     case swc_vv:is_key(OldVV, EntryId) of
                         false -> OldVV;
                         true  ->
-                            Counter = swc_vv:get(Id, NodeClockBase),
-                            swc_vv:add(OldVV, {EntryId, Counter})
+                            {Base,_} = swc_node:get(Id, NodeClock),
+                            swc_vv:add(OldVV, {EntryId, Base})
                     end
                 end,
                 M).
 
 -spec replace_peer(vv_matrix(), Old::id(), New::id()) -> vv_matrix().
 replace_peer(M, Old, New) ->
-    OldPeers0 = swc_vv:ids(orddict:fetch(Old,M)),
-    OldPeers = lists:delete(Old, OldPeers0),
-    M2 = add_peer(M, New, OldPeers),
-    M3 = orddict:erase(Old, M2),
+    M3 = case orddict:is_key(Old, M) of
+        true ->
+            OldPeers0 = swc_vv:ids(orddict:fetch(Old,M)),
+            OldPeers = lists:delete(Old, OldPeers0),
+            M2 = add_peer(M, New, OldPeers),
+            orddict:erase(Old, M2);
+        false -> M
+    end,
     orddict:map(fun(_K,V) ->
                     case orddict:find(Old, V) of
                         error -> V;
@@ -245,7 +248,8 @@ replace_peer_test() ->
     W = [{"b",[{"a",9},{"b",2},{"c",3}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}],
     ?assertEqual( replace_peer(C,"b","z"), [{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}]),
     ?assertEqual( replace_peer(Z,"a","b"), [{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}]),
-    ?assertEqual( replace_peer(W,"b","z"), [{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}]).
+    ?assertEqual( replace_peer(W,"b","z"), [{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}]),
+    ?assertEqual( replace_peer(W,"a","z"), [{"b",[{"b",2},{"c",3},{"z",0}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}]).
 
 -endif.
 
