@@ -7,7 +7,7 @@
 
 -type key_matrix()  :: [{Node :: id(), DotKey :: [{counter(), id()}]}]. % orddict().
 
--type vv_matrix() :: orddict:orddict().
+-type vv_matrix() :: {orddict:orddict(), orddict:orddict()}.
 
 -type dots()    :: [{dot(), value()}]. % orddict(dot -> value).
 -type dot()     :: {id(), counter()}.
