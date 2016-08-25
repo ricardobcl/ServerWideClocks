@@ -26,6 +26,7 @@
         , size/2
         , prune/2
         , get_keys/2
+        , is_key/2
         ]).
 
 -spec new() -> key_matrix().
@@ -36,6 +37,9 @@ new() ->
 empty(D) ->
     size(D) == 0.
 
+-spec is_key(key_matrix(), id()) -> boolean().
+is_key(D, Id) ->
+    orddict:is_key(Id, D).
 
 -spec add_key(key_matrix(), id(), id(), counter()) -> key_matrix().
 add_key(D, Id, Key, Counter) ->
@@ -80,7 +84,6 @@ prune(D, M) ->
                 {true ,false} -> {KeepDic,                               orddict:store(Peer, Remove, RemoveDic)};
                 {false,false} -> {orddict:store(Peer, Keep, KeepDic),    orddict:store(Peer, Remove, RemoveDic)}
             end
-            % prune_filter(K, Min, ToList, [], Acc)
         end,
         {orddict:new(), orddict:new()}, D).
 

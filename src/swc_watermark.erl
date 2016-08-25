@@ -30,6 +30,7 @@
         , get/3
         , reset_counters/1
         , delete_peer/2
+        , prune_retired_peers/2
         ]).
 
 -spec new() -> vv_matrix().
@@ -139,6 +140,9 @@ delete_peer({M,R}, Id) ->
     M2 = orddict:erase(Id, M),
     {orddict:map(fun (_Id,VV) -> swc_vv:delete_key(VV, Id) end, M2), R}.
 
+-spec prune_retired_peers(vv_matrix(), key_matrix()) -> vv_matrix().
+prune_retired_peers({M,R}, DKM) ->
+    {M, orddict:filter(fun (Peer,_) -> swc_dotkeymap:is_key(DKM, Peer) end, R)}.
 
 %%===================================================================
 %% EUnit tests
@@ -282,6 +286,16 @@ retire_peer_test() ->
                   {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",9},{"b",2},{"c",3}]}]}),
     ?assertEqual( retire_peer(W,"a","z"),
                   {[{"b",[{"b",2},{"c",3},{"z",0}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []}).
+
+prune_retired_peers_test() ->
+    D1 = [{"a",[1,2,22]}, {"b",[4,5,11]}],
+    D2 = [{"a",[1,2,22]}, {"z",[4,5,11]}],
+    A = {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",0},{"b",0},{"c",0}]}]},
+    A2 = {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], []},
+    ?assertEqual( prune_retired_peers(A, D1), A),
+    ?assertEqual( prune_retired_peers(A, D2), A2),
+    ?assertEqual( prune_retired_peers(A, []), A2).
+
 
 
 -endif.
