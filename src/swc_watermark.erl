@@ -105,7 +105,7 @@ left_join_aux(A,B) ->
     PeersA = orddict:fetch_keys(A),
     FunFilter = fun (Id,_) -> lists:member(Id, PeersA) end,
     B2 = orddict:filter(FunFilter, B),
-    orddict:merge(fun (_,V1,V2) -> swc_vv:join(V1,V2) end, A, B2).
+    orddict:merge(fun (_,V1,V2) -> swc_vv:left_join(V1,V2) end, A, B2).
 
 -spec update_cell(vv_matrix(), id(), id(), counter()) -> vv_matrix().
 update_cell({M,R}, EntryId, PeerId, Counter) ->
@@ -188,14 +188,16 @@ update_test() ->
 
 left_join_test() ->
     A = {[{"a",[{"b",4}, {"c",10}]}, {"c",[{"c",20}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}], []},
+    Z = {[{"a",[{"b",5}, {"c",8}, {"z",2}]}, {"c",[{"c",20}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}], []},
     B = {[{"a",[{"b",2}, {"c",10}]}, {"b",[]}, {"c",[{"c",22}]}], []},
     C = {[{"z",[{"a",1}, {"b",0}, {"z",4}]}], []},
     ?assertEqual( left_join(A,B), {[{"a",[{"b",4},{"c",10}]}, {"c",[{"c",22}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}], []}),
-    ?assertEqual( left_join(A,C), {[{"a",[{"b",4},{"c",10}]}, {"c",[{"c",20}]}, {"z",[{"a",1},{"b",0},{"t1",0},{"t2",0},{"z",4}]}], []}),
+    ?assertEqual( left_join(A,Z), {[{"a",[{"b",5},{"c",10}]}, {"c",[{"c",20}]}, {"z",[{"t1",0},{"t2",0},{"z",0}]}], []}),
+    ?assertEqual( left_join(A,C), {[{"a",[{"b",4},{"c",10}]}, {"c",[{"c",20}]}, {"z",[{"t1",0},{"t2",0},{"z",4}]}], []}),
     ?assertEqual( left_join(B,A), {[{"a",[{"b",4},{"c",10}]}, {"b",[]}, {"c",[{"c",22}]}], []}),
-    ?assertEqual( left_join(B,C), {[{"a",[{"b",2},{"c",10}]}, {"b",[]}, {"c",[{"c",22}]}], []}),
-    ?assertEqual( left_join(C,A), {[{"z",[{"a",1},{"b",0},{"t1",0},{"t2",0},{"z",4}]}], []}),
-    ?assertEqual( left_join(C,B), {[{"z",[{"a",1},{"b",0},{"z",4}]}], []}).
+    ?assertEqual( left_join(B,C), B),
+    ?assertEqual( left_join(C,A), C),
+    ?assertEqual( left_join(C,B), C).
 
 
 add_peers_test() ->

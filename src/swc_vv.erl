@@ -18,6 +18,7 @@
         , is_key/2
         , get/2
         , join/2
+        , left_join/2
         , filter/2
         , add/2
         , min/1
@@ -56,6 +57,16 @@ get(K,V) ->
 join(A,B) ->
     FunMerge = fun (_Id, C1, C2) -> max(C1, C2) end,
     orddict:merge(FunMerge, A, B).
+
+%% @doc Left joins two VVs, taking the maximum counter if an entry is
+%% present in both VVs, and also taking the entrie in A and not in B.
+-spec left_join(vv(), vv()) -> vv().
+left_join(A,B) ->
+    PeersA = orddict:fetch_keys(A),
+    FunFilter = fun (Id,_) -> lists:member(Id, PeersA) end,
+    B2 = orddict:filter(FunFilter, B),
+    orddict:merge(fun (_,C1,C2) -> max(C1,C2) end, A, B2).
+
 
 %% @doc It applies some boolean function F to all entries in the VV, removing
 %% those that return False when F is used.
@@ -138,6 +149,15 @@ delete_key_test() ->
     ?assertEqual(delete_key(A0, "b"), [{"a",2}]),
     ?assertEqual(delete_key(A1, "a"), [{"b",4}, {"c",4}]),
     ok.
+
+join_test() ->
+    A0 = [{"a",4}],
+    A1 = [{"a",2}, {"b",4}, {"c",4}],
+    A2 = [{"a",1}, {"z",10}],
+    ?assertEqual(join(A0,A1), [{"a",4}, {"b",4}, {"c",4}]),
+    ?assertEqual(left_join(A0,A1), A0),
+    ?assertEqual(left_join(A0,A2), A0).
+
 
 
 -endif.
