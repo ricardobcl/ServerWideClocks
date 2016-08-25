@@ -50,7 +50,11 @@ add_peer({M,R}, NewPeer, ItsPeers) ->
 
 -spec update_peer(vv_matrix(), id(), bvv()) -> vv_matrix().
 update_peer({M,R}, EntryId, NodeClock) ->
-    {orddict:map(fun (Id, OldVV) ->
+    {update_peer_aux(M, EntryId, NodeClock),
+     update_peer_aux(R, EntryId, NodeClock)}.
+
+update_peer_aux(M, EntryId, NodeClock) ->
+    orddict:map(fun (Id, OldVV) ->
                     case swc_vv:is_key(OldVV, EntryId) of
                         false -> OldVV;
                         true  ->
@@ -58,7 +62,7 @@ update_peer({M,R}, EntryId, NodeClock) ->
                             swc_vv:add(OldVV, {EntryId, Base})
                     end
                 end,
-                M), R}.
+                M).
 
 -spec replace_peer(vv_matrix(), Old::id(), New::id()) -> vv_matrix().
 replace_peer({M,R}, Old, New) ->
@@ -165,6 +169,9 @@ update_test() ->
     M9 = update_peer(M5, "a", C2),
     M10 = update_peer(M5, "b", C1),
     M11 = update_peer(M5, "b", C2),
+    N = {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",2},{"b",2},{"c",3}]}]},
+    ?assertEqual( update_peer(N,"a",C1), {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",7},{"b",2},{"c",3}]}]}),
+    ?assertEqual( update_peer(N,"c",C2), {[{"c",[{"c",50},{"d",3},{"z",0}]}, {"d",[{"c",5},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",2},{"b",2},{"c",5}]}]}),
     ?assertEqual( M1,  {[{"a",[{"b",4}]}], []}),
     ?assertEqual( M2,  {[{"a",[{"b",4}, {"c",10}]}], []}),
     ?assertEqual( M3,  {[{"a",[{"b",4}, {"c",10}]},    {"c",[{"c",2}]}], []}),
@@ -269,7 +276,7 @@ replace_peer_test() ->
     W = {[{"b",[{"a",9},{"b",2},{"c",3}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []},
     ?assertEqual( replace_peer(C,"b","z"), {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], []}),
     ?assertEqual( replace_peer(Z,"a","b"), {[{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}], []}),
-    ?assertEqual( replace_peer(W,"b","z"), {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}], []}),
+    ?assertEqual( replace_peer(W,"b","z"), {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], []}),
     ?assertEqual( replace_peer(W,"a","z"), {[{"b",[{"b",2},{"c",3},{"z",0}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []}).
 
 retire_peer_test() ->
@@ -283,7 +290,7 @@ retire_peer_test() ->
     ?assertEqual( retire_peer(Z,"a","b"),
                   {[{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}], [{"a",[{"a",9},{"c",2},{"z",3}]}]}),
     ?assertEqual( retire_peer(W,"b","z"),
-                  {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d", [{"c",0},{"d",1},{"e",2}]}, {"z",[{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",9},{"b",2},{"c",3}]}]}),
+                  {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",9},{"b",2},{"c",3}]}]}),
     ?assertEqual( retire_peer(W,"a","z"),
                   {[{"b",[{"b",2},{"c",3},{"z",0}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []}).
 
