@@ -30,7 +30,7 @@
         , get/3
         , reset_counters/1
         , delete_peer/2
-        , prune_retired_peers/2
+        , prune_retired_peers/3
         ]).
 
 -spec new() -> vv_matrix().
@@ -146,9 +146,12 @@ delete_peer({M,R}, Id) ->
     M2 = orddict:erase(Id, M),
     {orddict:map(fun (_Id,VV) -> swc_vv:delete_key(VV, Id) end, M2), R}.
 
--spec prune_retired_peers(vv_matrix(), key_matrix()) -> vv_matrix().
-prune_retired_peers({M,R}, DKM) ->
-    {M, orddict:filter(fun (Peer,_) -> swc_dotkeymap:is_key(DKM, Peer) end, R)}.
+-spec prune_retired_peers(vv_matrix(), key_matrix(), [id()]) -> vv_matrix().
+prune_retired_peers({M,R}, DKM, DontRemotePeers) ->
+    {M, orddict:filter(fun (Peer,_) ->
+                               swc_dotkeymap:is_key(DKM, Peer) orelse
+                               lists:member(Peer, DontRemotePeers)
+                       end, R)}.
 
 %%===================================================================
 %% EUnit tests
@@ -303,9 +306,11 @@ prune_retired_peers_test() ->
     D2 = [{"a",[1,2,22]}, {"z",[4,5,11]}],
     A = {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",0},{"b",0},{"c",0}]}]},
     A2 = {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], []},
-    ?assertEqual( prune_retired_peers(A, D1), A),
-    ?assertEqual( prune_retired_peers(A, D2), A2),
-    ?assertEqual( prune_retired_peers(A, []), A2).
+    ?assertEqual( prune_retired_peers(A, D1, []), A),
+    ?assertEqual( prune_retired_peers(A, D1, ["a", "b","c","z"]), A),
+    ?assertEqual( prune_retired_peers(A, D2, []), A2),
+    ?assertEqual( prune_retired_peers(A, D2, ["b"]), A),
+    ?assertEqual( prune_retired_peers(A, [], []), A2).
 
 
 
