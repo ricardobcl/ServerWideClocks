@@ -22,7 +22,7 @@
         , add_peer/3
         , left_join/2
         , replace_peer/3
-        , retire_peer/4
+        , retire_peer/3
         , update_peer/3
         , update_cell/4
         , min/2
@@ -74,24 +74,25 @@ replace_peer({M,R}, Old, New) ->
             orddict:erase(Old, M2);
         false -> M
     end,
-    {orddict:map(fun(_K,V) ->
-                    case orddict:find(Old, V) of
-                        error -> V;
-                        {ok, _} ->
-                            V2 = swc_vv:delete_key(V, Old),
-                            swc_vv:add(V2, {New, 0})
-                    end
-                end, M3), R}.
+    Fun = fun(_K,V) ->
+            case orddict:find(Old, V) of
+                error -> V;
+                {ok, _} ->
+                    V2 = swc_vv:delete_key(V, Old),
+                    swc_vv:add(V2, {New, 0})
+            end
+        end,
+    {orddict:map(Fun, M3), orddict:map(Fun, R)}.
 
--spec retire_peer(vv_matrix(), Old::id(), New::id(), Jump::non_neg_integer()) -> vv_matrix().
-retire_peer({M,R}, Old, New, Jump) ->
+-spec retire_peer(vv_matrix(), Old::id(), New::id()) -> vv_matrix().
+retire_peer({M,R}, Old, New) ->
     case orddict:find(Old, M) of
         error ->
             replace_peer({M,R}, Old, New);
         {ok, OldEntry} ->
-            CurrentCounter = swc_vv:get(Old, OldEntry),
-            OldEntry2 = swc_vv:add(OldEntry, {Old, CurrentCounter+Jump}),
-            R1 = orddict:store(Old, OldEntry2, R),
+            % CurrentCounter = swc_vv:get(Old, OldEntry),
+            % OldEntry2 = swc_vv:add(OldEntry, {Old, CurrentCounter+Jump}),
+            R1 = orddict:store(Old, OldEntry, R),
             replace_peer({M,R1}, Old, New)
     end.
 
@@ -292,13 +293,13 @@ retire_peer_test() ->
     C = add_peer(B,     "c", ["a","b"]),
     Z = {[{"a",[{"a",9},{"c",2},{"z",3}]}, {"c",[{"a",1},{"c",4},{"z",3}]}, {"z", [{"a",0},{"c",1},{"z",2}]}], []},
     W = {[{"b",[{"a",9},{"b",2},{"c",3}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []},
-    ?assertEqual( retire_peer(C,"b","z",100),
-                  {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",0},{"b",100},{"c",0}]}]}),
-    ?assertEqual( retire_peer(Z,"a","b",200),
-                  {[{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}], [{"a",[{"a",209},{"c",2},{"z",3}]}]}),
-    ?assertEqual( retire_peer(W,"b","z",1),
-                  {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",9},{"b",3},{"c",3}]}]}),
-    ?assertEqual( retire_peer(W,"a","z",10),
+    ?assertEqual( retire_peer(C,"b","z"),
+                  {[{"a",[{"a",0},{"c",0},{"z",0}]}, {"c",[{"a",0},{"c",0},{"z",0}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",0},{"c",0},{"z",0}]}]}),
+    ?assertEqual( retire_peer(Z,"a","b"),
+                  {[{"b",[{"b",0},{"c",0},{"z",0}]}, {"c",[{"b",0},{"c",4},{"z",3}]}, {"z", [{"b",0},{"c",1},{"z",2}]}], [{"a",[{"b",0},{"c",2},{"z",3}]}]}),
+    ?assertEqual( retire_peer(W,"b","z"),
+                  {[{"c",[{"c",4},{"d",3},{"z",0}]}, {"d",[{"c",0},{"d",1},{"e",2}]}, {"z", [{"a",0},{"c",0},{"z",0}]}], [{"b",[{"a",9},{"c",3},{"z",0}]}]}),
+    ?assertEqual( retire_peer(W,"a","z"),
                   {[{"b",[{"b",2},{"c",3},{"z",0}]}, {"c",[{"b",1},{"c",4},{"d",3}]}, {"d", [{"c",0},{"d",1},{"e",2}]}], []}).
 
 prune_retired_peers_test() ->
