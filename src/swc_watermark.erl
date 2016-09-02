@@ -139,8 +139,9 @@ get({M,_}, P1, P2) ->
     end.
 
 -spec reset_counters(vv_matrix()) -> vv_matrix().
-reset_counters({M,_}) ->
-    {orddict:map(fun (_Id,VV) -> swc_vv:reset_counters(VV) end, M), orddict:new()}.
+reset_counters({M,R}) ->
+    {orddict:map(fun (_Id,VV) -> swc_vv:reset_counters(VV) end, M),
+    orddict:map(fun (_Id,VV) -> swc_vv:reset_counters(VV) end, R)}.
 
 -spec delete_peer(vv_matrix(), id()) -> vv_matrix().
 delete_peer({M,R}, Id) ->
