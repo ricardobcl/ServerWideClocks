@@ -26,6 +26,9 @@
         , update_peer/3
         , update_cell/4
         , min/2
+        , min/3
+        , min_all/1
+        , min_all/2
         , peers/1
         , get/3
         , reset_counters/1
@@ -126,6 +129,40 @@ min_aux(M, Id) ->
         error -> 0;
         {ok, VV} -> swc_vv:min(VV)
     end.
+
+-spec min(vv_matrix(), id(), non_neg_integer()) -> counter().
+min({M,R}, Id, MinEntries) ->
+    max(min_aux(M, Id, MinEntries), min_aux(R, Id, MinEntries)).
+
+min_aux(M, Id, MinEntries) ->
+    case orddict:find(Id, M) of
+        error -> 0;
+        {ok, VV} ->
+            case orddict:size(VV) < MinEntries of
+                true -> 0;
+                false -> swc_vv:min(VV)
+            end
+    end.
+
+-spec min_all(vv_matrix()) -> vv().
+min_all(WM={M,R}) ->
+    Peers = orddict:fetch_keys(M) ++ orddict:fetch_keys(R),
+    lists:foldl(fun(Peer, VV) ->
+                        Min = min(WM, Peer),
+                        swc_vv:add(VV, {Peer, Min})
+                end,
+                swc_vv:new(),
+                Peers).
+
+-spec min_all(vv_matrix(), non_neg_integer()) -> vv().
+min_all(WM={M,R}, MinEntries) ->
+    Peers = orddict:fetch_keys(M) ++ orddict:fetch_keys(R),
+    lists:foldl(fun(Peer, VV) ->
+                        Min = min(WM, Peer, MinEntries),
+                        swc_vv:add(VV, {Peer, Min})
+                end,
+                swc_vv:new(),
+                Peers).
 
 -spec peers(vv_matrix()) -> [id()].
 peers({M,_}) ->
@@ -228,6 +265,20 @@ min_test() ->
     ?assertEqual( min(M4, "a"), 4),
     ?assertEqual( min(M4, "c"), 20),
     ?assertEqual( min(M4, "b"), 0).
+
+min_all_test() ->
+    M = new(),
+    M1 = update_cell(M, "a", "b",4),
+    M2 = update_cell(M1, "a", "c",10),
+    M3 = update_cell(M2, "c", "c",2),
+    M4 = update_cell(M3, "c", "c",20),
+    ?assertEqual( min_all(M), []),
+    ?assertEqual( min_all(M1), [{"a",4}]),
+    ?assertEqual( min_all(M2), [{"a",4}]),
+    ?assertEqual( min_all(M3), [{"a",4},{"c",2}]),
+    ?assertEqual( min_all(M4), [{"a",4},{"c",20}]),
+    ?assertEqual( min_all(M4,0), [{"a",4},{"c",20}]),
+    ?assertEqual( min_all(M4,10), [{"a",0},{"c",0}]).
 
 peers_test() ->
     M = new(),

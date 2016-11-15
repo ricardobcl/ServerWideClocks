@@ -20,6 +20,7 @@
         , sync/2
         , discard/2
         , strip/2
+        , strip_wm/2
         , fill/2
         , fill/3
         , add/2
@@ -110,6 +111,20 @@ strip({D,V}, B) ->
         end,
     {D, swc_vv:filter(FunFilter, V)}.
 
+-spec strip_wm(dcc(), vv()) -> dcc().
+strip_wm({D,V}, MinWM) ->
+    F = fun(_           , false) -> false;
+           ({{Id,Counter}, _Val}, true) ->
+                case orddict:find(Id, MinWM) of
+                    error -> false;
+                    {ok, StableTime} -> Counter =< StableTime
+                end
+        end,
+    case lists:foldl(F, true, D) of
+        true -> {D,[]}; % since every version is know by every peer, remove context
+        false -> {D,V} % don't do anything yet
+    end.
+
 
 %% @doc Function fill adds back causality information to a stripped DCC, before
 %% any operation is performed.
@@ -188,6 +203,32 @@ strip_test() ->
     ?assertEqual( strip(d5(), [{"a",{15,4}}, {"b", {1,2}}] ) , { [{{"a",5}, "gray"}] , [{"b",5}, {"c", 4}] }),
     ?assertEqual( strip(d5(), [{"b",{15,4}}, {"c", {1,2}}] ) , { [{{"a",5}, "gray"}] , [{"a",5}, {"c", 4}] }),
     ?assertEqual( strip(d5(), [{"a",{15,4}}, {"b",{15,4}}, {"c", {5,2}}] ) , { [{{"a",5}, "gray"}] , [] }).
+
+% d3() -> { [{{"a",1}, "black"}, {{"a",3}, "red"}, {{"b",1}, "green"}, {{"b",2}, "green"}] , 
+%                 [{"a",4}, {"b",7}] }.
+strip_wm_test() ->
+    A0 = [{"a",2}],
+    A1 = [{"a",2}, {"b",4}, {"c",4}],
+    A2 = [{"a",5}, {"b",4}, {"c",4}],
+    A3 = [{"a",5}, {"b",5}, {"c",4}],
+    A4 = [{"z",5}, {"b",14}, {"c",4}],
+    A5 = [{"a",15}, {"b",14}, {"c",14}],
+    D5s = { [{{"a",5}, "gray"}] , [] },
+    D3s = { [{{"a",1}, "black"}, {{"a",3}, "red"}, {{"b",1}, "green"}, {{"b",2}, "green"}] , [] },
+    ?assertEqual( strip_wm(d5(), [] ) , d5()),
+    ?assertEqual( strip_wm(d5(), A0 ) , d5()),
+    ?assertEqual( strip_wm(d5(), A1 ) , d5()),
+    ?assertEqual( strip_wm(d5(), A2 ) , D5s),
+    ?assertEqual( strip_wm(d5(), A3 ) , D5s),
+    ?assertEqual( strip_wm(d5(), A4 ) , d5()),
+    ?assertEqual( strip_wm(d5(), A5 ) , D5s),
+    ?assertEqual( strip_wm(d3(), [] ) , d3()),
+    ?assertEqual( strip_wm(d3(), A0 ) , d3()),
+    ?assertEqual( strip_wm(d3(), A1 ) , d3()),
+    ?assertEqual( strip_wm(d3(), A2 ) , D3s),
+    ?assertEqual( strip_wm(d3(), A3 ) , D3s),
+    ?assertEqual( strip_wm(d3(), A4 ) , d3()),
+    ?assertEqual( strip_wm(d3(), A5 ) , D3s).
 
 fill_test() ->
     ?assertEqual( fill(d5(), [{"a",{4,4}}] ) , d5()),
