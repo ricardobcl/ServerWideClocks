@@ -25,6 +25,7 @@
         , size/1
         , size/2
         , prune/2
+        , prune2/2
         , get_keys/2
         , is_key/2
         ]).
@@ -87,6 +88,29 @@ prune(D, M) ->
         end,
         {orddict:new(), orddict:new()}, D).
 
+-spec prune2(key_matrix(), vv()) -> {key_matrix(), [id()]}.
+prune2(D, MinWM) ->
+    orddict:fold(
+        fun (Peer, V, {KeepDic, RemKeys}) ->
+            Min = swc_vv:get(Peer, MinWM),
+            {Keep, RemKeys2} = prune_aux(Min, V),
+            case orddict:is_empty(Keep) of
+                true   -> {KeepDic,                            RemKeys ++ RemKeys2};
+                false  -> {orddict:store(Peer, Keep, KeepDic), RemKeys ++ RemKeys2}
+            end
+        end,
+        {orddict:new(), []}, D).
+
+-spec prune_aux(non_neg_integer(), orddict:orddict()) -> {orddict:orddict(), [id()]}.
+prune_aux(0, DotKeys) -> {DotKeys, []};
+prune_aux(Min, DotKeys) ->
+    orddict:fold(
+        fun (Dot, Key, {Keep, RemKeys}) ->
+            case Dot > Min of
+                true -> {orddict:store(Dot,Key,Keep), RemKeys};
+                false -> {Keep, [Key|RemKeys]}
+            end
+        end, {orddict:new(), []}, DotKeys).
 
 -spec get_keys(key_matrix(), [{id(),[counter()]}]) -> {FoundKeys::[id()], MissingKeys::[{id(), [counter()]}]}.
 get_keys(D, L) -> get_keys(D, L, {[],[]}).
@@ -189,6 +213,28 @@ prune_test() ->
     ?assertEqual( prune(K5, M5) , {[{"c", [{20,"kc"}]}], [{"a",[{1,"k1"}, {2,"k2"}]}, {"b",[{2,"kb2"},{4,"kb"}]}]}),
     ?assertEqual( prune(K5, M6) , {[{"c", [{20,"kc"}]}], [{"a",[{1,"k1"}, {2,"k2"}]}, {"b",[{2,"kb2"},{4,"kb"}]}]}),
     ?assertEqual( prune(K5, M7) , {[], [{"a",[{1,"k1"}, {2,"k2"}]}, {"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}]}).
+
+prune2_test() ->
+    K1 = add_key(new(), "a", "k1", 1),
+    K2 = add_key(K1, "a", "k2", 2),
+    K3 = add_key(K2, "b", "kb", 4),
+    K4 = add_key(K3, "b", "kb2", 2),
+    K5 = add_key(K4, "c", "kc", 20),
+    Z = [{"z",2}],
+    B = [{"b",2}],
+    A = [{"a",1}],
+    A0 = [{"a",2}],
+    A1 = [{"a",5}, {"b",4}, {"c",4}],
+    A2 = [{"a",5}, {"b",5}, {"c",40}],
+    A3 = [{"b",14}, {"c",124}, {"z",5}],
+    ?assertEqual( prune2(K5, Z)  , {[{"a", [{1, "k1"}, {2, "k2"}]}, {"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}], []}),
+    ?assertEqual( prune2(K5, B)  , {[{"a", [{1, "k1"}, {2, "k2"}]}, {"b",[{4,"kb"}]}, {"c",[{20,"kc"}]}], ["kb2"]}),
+    ?assertEqual( prune2(K5, A)  , {[{"a", [{2, "k2"}]},{"b",[{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}], ["k1"]}),
+    ?assertEqual( prune2(K5, A0) , {[{"b", [{2,"kb2"},{4,"kb"}]}, {"c",[{20,"kc"}]}], ["k2","k1"]}),
+    ?assertEqual( prune2(K5, A1) , {[{"c",[{20,"kc"}]}], ["k2","k1","kb","kb2"]}),
+    ?assertEqual( prune2(K5, A2) , {[], ["k2","k1","kb","kb2","kc"]}),
+    ?assertEqual( prune2(K5, A3) , {[{"a", [{1, "k1"}, {2, "k2"}]}], ["kb","kb2","kc"]}),
+    ok.
 
 get_keys_test() ->
     K1 = add_key(new(), "a", "k1", 1),
