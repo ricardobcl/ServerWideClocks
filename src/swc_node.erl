@@ -21,6 +21,7 @@
         , values/1
         , missing_dots/3
         , add/2
+        , already_seen/2
         , merge/2
         , join/2
         , base/1
@@ -118,6 +119,30 @@ values_aux(N,B,L) ->
         0 -> values_aux(M, B bsr 1, L);
         1 -> values_aux(M, B bsr 1, [ M | L ])
     end.
+
+-spec already_seen(bvv(), dcc()) -> boolean().
+already_seen(NC, DCC) ->
+    {Versions, _} = DCC,
+    Dots = [Dot || {Dot,_} <- Versions],
+    lists:foldl(fun (_, false) -> false;
+                ({Id,Counter}, true) ->
+                    {Base, Rest} = get(Id, NC),
+                    case Counter > Base of
+                        false -> true;
+                        true -> is_inside_bitmap(Counter, {Base, Rest})
+                    end
+            end, true, Dots).
+
+is_inside_bitmap(_,{_,0}) ->
+    false;
+is_inside_bitmap(C,{B,_}) when C < B ->
+    false;
+is_inside_bitmap(C,{B,R}) ->
+    case R rem 2 of
+        0 -> is_inside_bitmap(C, {B+1, R bsr 1});
+        1 -> C == B+1 orelse is_inside_bitmap(C, {B+1, R bsr 1})
+    end.
+
 
 %% @doc Adds a dot (ID, Counter) to a BVV.
 -spec add(bvv(), {id(), counter()}) -> bvv().
@@ -225,6 +250,20 @@ missing_dots_test() ->
     ?assertEqual( lists:sort(missing_dots([{"a",{2,2}}, {"b",{3,0}}], [], ["a","b"])), [{"a",[1,2,4]}, {"b",[1,2,3]}]),
     ?assertEqual( missing_dots([], B1, ["a","b","c","d","e","f","g","h"]), []).
 
+
+already_seen_test() ->
+    A = [{"a",{7,0}}, {"b",{2,22}}],
+    ?assertEqual( already_seen(A, {[{{"a",2},v1}, {{"b",2},v2}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"a",7},v1}, {{"b",2},v2}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"a",8},v1}, {{"b",2},v2}], []}), false),
+    ?assertEqual( already_seen(A, {[{{"a",4},v1}, {{"a",7},v2}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"b",4},v1}, {{"b",7},v2}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"b",4},v1}, {{"b",5},v2}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"b",3},v1}, {{"b",5},v2}], []}), false),
+    ?assertEqual( already_seen(A, {[{{"b",4},v1}, {{"b",8},v2}], []}), false),
+    ?assertEqual( already_seen(A, {[{{"b",4},v1}, {{"b",5},v2}, {{"b",7},v4}], []}), true),
+    ?assertEqual( already_seen(A, {[{{"z",4},v1}, {{"b",5},v2}, {{"b",7},v4}], []}), false),
+    ok.
 
 subtract_dots_test() ->
     ?assertEqual( subtract_dots({12,0},{5,14}), [6,10,11,12]),
