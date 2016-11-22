@@ -21,6 +21,7 @@
         , discard/2
         , strip/2
         , strip_wm/2
+        , fill/1
         , fill/2
         , fill/3
         , add/2
@@ -121,6 +122,12 @@ strip_wm({D,V}, MinWM) ->
         false -> {D,V} % don't do anything yet
     end.
 
+%% @doc Function fill ensures that the context has the entries corresponding to
+%% the dots of current versions.
+-spec fill(dcc()) -> dcc().
+fill({V,C}) ->
+    C2 = lists:foldl(fun({Dot,_}, VV) -> swc_vv:add(VV, Dot) end, C, V),
+    {V,C2}.
 
 %% @doc Function fill adds back causality information to a stripped DCC, before
 %% any operation is performed.
@@ -227,6 +234,9 @@ strip_wm_test() ->
     ?assertEqual( strip_wm(d3(), A5 ) , D3s).
 
 fill_test() ->
+    ?assertEqual( fill({[{{"a",2},"red"}], []}), {[{{"a",2},"red"}], [{"a",2}]}),
+    ?assertEqual( fill({[{{"a",2},"red"}, {{"a",22},"blue"}], []}), {[{{"a",2},"red"}, {{"a",22},"blue"}], [{"a",22}]}),
+    ?assertEqual( fill({[{{"a",2},"red"}, {{"b",27},"blue"}], [{"z",3}]}), {[{{"a",2},"red"}, {{"b",27},"blue"}], [{"a",2}, {"b",27}, {"z",3}]}),
     ?assertEqual( fill(d5(), [{"a",{4,4}}] ) , d5()),
     ?assertEqual( fill(d5(), [{"a",{5,0}}] ) , d5()),
     ?assertEqual( fill(d5(), [{"a",{6,0}}] ) , { [{{"a",5}, "gray"}] , [{"a",6}, {"b",5}, {"c",4}]}),
