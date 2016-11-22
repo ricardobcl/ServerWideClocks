@@ -55,22 +55,18 @@ context({_D,V}) -> V.
 %% context; the causal context is obtained by a standard version vector merge
 %% function (performing the pointwise maximum).
 -spec sync(dcc(), dcc()) -> dcc().
-sync({D1,V1}, {D2,V2}) ->
-    % if two versions have the same dot, they must have the same value also 
-    FunMerge = fun (_Dot, Val, Val) -> Val end,
-    % merge the two DCCs
-    Dm = orddict:merge(FunMerge, D1, D2),
-    % filter the outdated versions
-    FunFilter = fun ({Id,Counter}, _Val) -> Counter > min(swc_vv:get(Id,V1), swc_vv:get(Id,V2)) end,
-    Df = orddict:filter(FunFilter, Dm),
+sync({Da,Va}, {Db,Vb}) ->
+    Da1 = orddict:filter(fun ({Id,Counter}, _Val) -> Counter > swc_vv:get(Id,Vb) end, Da),
+    Db1 = orddict:filter(fun ({Id,Counter}, _Val) -> Counter > swc_vv:get(Id,Va) end, Db),
     % calculate versions that are in both DCCs
-    K1 = orddict:fetch_keys(D1),
-    Pred = fun (Dot,_Val) -> lists:member(Dot, K1) end,
-    Db = orddict:filter(Pred, D2),
+    DotsA = orddict:fetch_keys(Da),
+    Dab = orddict:filter(fun (DotB,_Val) -> lists:member(DotB, DotsA) end, Db),
     % add these versions to the filtered list of versions
-    D = orddict:merge(FunMerge, Df, Db),
+    FunMerge = fun (_Dot, Val, Val) -> Val end,
+    D0 = orddict:merge(FunMerge, Da1, Db1),
+    D = orddict:merge(FunMerge, D0, Dab),
     % return the new list of version and the merged VVs
-    {D, swc_vv:join(V1,V2)}.
+    {D, swc_vv:join(Va,Vb)}.
 
 %% @doc Adds the dots corresponding to each version in the DCC to the BVV; this
 %% is accomplished by using the standard fold higher-order function, passing
